@@ -1,78 +1,80 @@
-from collections import defaultdict
-import time
+from collections import Counter
 
-def split_pair(pair):
-    pair = pair.split(' -> ')
-    return pair
 
+def create_next_pairs_dict(pair_list_raw):
+    next_pairs_dict = {}
+    for pair in pair_list_raw:
+        pair = pair.split(' -> ')
+        next_pairs_dict[pair[0]] = [pair[0][0] + pair[1], pair[1] + pair[0][1]]
+    return next_pairs_dict
+    
 
 def make_puzzle_inputs(file_path):
     with open(file_path) as file:
         input_text = file.read().splitlines()
         polymer = input_text[0]
-        pair_list = input_text[2:]
-        pair_list = list(map(split_pair, pair_list))
-        return polymer, pair_list 
+        next_pairs_dict = create_next_pairs_dict(input_text[2:])
+    return polymer, next_pairs_dict
 
 
-def grow_polymer(polymer, pair_list, polymer_lookup_dict): 
-    new_polymer = ''
-    updated_polymer_pair = ''
-    for i, char in enumerate(polymer):
-        try:
-            polymer_pair = char + polymer[i + 1]
-        except IndexError:
-            new_polymer += char
-            break
-        if polymer_pair in polymer_lookup_dict.keys():
-            updated_polymer_pair = polymer_lookup_dict[polymer_pair]
-        else:
-            for pair in pair_list:
-                if pair[0] == polymer_pair:
-                    updated_polymer_pair = polymer_pair[0] + pair[1]
-                    polymer_lookup_dict[polymer_pair] = updated_polymer_pair
-                    break 
-        new_polymer += updated_polymer_pair
-    return new_polymer, polymer_lookup_dict
+def create_starting_pair_counts(polymer, next_pairs_list):
+    pair_counts = Counter()
+    for i, _ in enumerate(polymer):
+        if i + 1 == len(polymer): break
+        next_pairs = next_pairs_list[polymer[i:i+2]]
+        pair_counts.update(next_pairs)
+    return pair_counts
 
 
-def grow_polymer_n_times(polymer, pair_list, polymer_lookup_dict, n):
-    for i in range(n):
-        start_time = time.time()
-        polymer, polymer_lookup_dict = grow_polymer(polymer, pair_list, polymer_lookup_dict)
-        elapsed_time = time.time() - start_time
-        print(f'grew polymer {i + 1} times in {round(elapsed_time, 4)} seconds')
-        print(f'{polymer}')
-    return polymer
+def update_pair_counts(pair_counts, next_pairs_list):
+    new_pair_counts = Counter()
+    for key, value in pair_counts.items():
+        update_dict_1 = {next_pairs_list[key][0]: value}
+        update_dict_2 = {next_pairs_list[key][1]: value}
+        new_pair_counts.update(update_dict_1)
+        new_pair_counts.update(update_dict_2)
+    return new_pair_counts
 
 
-def default_to_0():
-    return 0
+def grow_polymer(polymer, next_pairs_list, n):
+    print(0)
+    pair_counts = create_starting_pair_counts(polymer, next_pairs_list)
+    print(1)
+    for i in range(n - 1):
+        print(i + 2)
+        pair_counts = update_pair_counts(pair_counts, next_pairs_list)
+    char_counts = Counter()
+    for key, value in pair_counts.items():
+        update_dict_1 = {key[0]: value}
+        update_dict_2 = {key[1]: value}
+        char_counts.update(update_dict_1)
+        char_counts.update(update_dict_2)
+    answer_dict = {}
+    for key, value in char_counts.items():
+        extra = 0
+        if key == polymer[0] or key == polymer[-1]: 
+            extra = .5 
+        answer_dict[key] = value / 2 + extra
+    return answer_dict
 
 
-def create_occurance_dict(polymer):
-    occurance_dict = defaultdict(default_to_0)
-    for char in polymer:
-        occurance_dict[char] = occurance_dict[char] + 1
-    return dict(occurance_dict)
-
-
-def find_max_and_min_key(occurance_dict):
-    max_key = max(occurance_dict, key=occurance_dict.get)
-    min_key = min(occurance_dict, key=occurance_dict.get)
+def find_max_and_min_key(answer_dict):
+    max_key = max(answer_dict, key=answer_dict.get)
+    min_key = min(answer_dict, key=answer_dict.get)
     return max_key, min_key
 
 
-def calculate_answer(occurance_dict, min_key, max_key):
-    max = occurance_dict[max_key]
-    min = occurance_dict[min_key]
+def calculate_answer(answer_dict, min_key, max_key):
+    max = answer_dict[max_key]
+    min = answer_dict[min_key]
     return max - min
 
-polymer, pair_list = make_puzzle_inputs('input_1.txt')
-polymer_lookup_dict = {}
-polymer = grow_polymer_n_times(polymer, pair_list, polymer_lookup_dict, 25)
-occurance_dict = create_occurance_dict(polymer)
-print(occurance_dict)
-max_key, min_key = find_max_and_min_key(occurance_dict)
-answer = calculate_answer(occurance_dict, min_key, max_key)
+
+polymer, next_pairs_list = make_puzzle_inputs('input_1.txt')
+pair_counts = create_starting_pair_counts(polymer, next_pairs_list)
+pair_counts = update_pair_counts(pair_counts, next_pairs_list)
+answer_dict = grow_polymer(polymer, next_pairs_list, 40)
+max_key, min_key = find_max_and_min_key(answer_dict)
+answer = calculate_answer(answer_dict, min_key, max_key)
+print(answer_dict)
 print(f'answer = {answer}')
